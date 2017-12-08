@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	stdlog "log"
 	"math/rand"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin"
+	"github.com/pinzolo/casee"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/oauth2/google"
@@ -57,20 +59,9 @@ var (
 	// seed random number
 	r = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	// define prometheus counter
-	dnsRecordsTotals = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "estafette_cloudflare_dns_record_totals",
-			Help: "Number of updated Cloudflare dns records.",
-		},
-		[]string{"namespace", "status", "initiator", "type"},
-	)
+	// map with prometheus metrics
+	gauges = make(map[string]prometheus.Gauge)
 )
-
-func init() {
-	// Metrics have to be registered to be exposed:
-	prometheus.MustRegister(dnsRecordsTotals)
-}
 
 func main() {
 
@@ -134,9 +125,6 @@ func main() {
 				log.Fatal().Err(err).Msg("Creating google cloud service failed")
 			}
 
-			// Project ID for this request.
-			//project := "my-project" // TODO: Update placeholder value.
-
 			project, err := computeService.Projects.Get(*googleComputeProject).Context(ctx).Do()
 			if err != nil {
 				log.Fatal().Err(err).Msg("Creating gcloud service failed")
@@ -145,7 +133,7 @@ func main() {
 			updatePrometheusTimelinesFromQuota(project.Quotas)
 
 			// sleep random time between 22 and 37 seconds
-			sleepTime := applyJitter(30)
+			sleepTime := applyJitter(300)
 			log.Info().Msgf("Sleeping for %v seconds...", sleepTime)
 			time.Sleep(time.Duration(sleepTime) * time.Second)
 		}
@@ -161,6 +149,38 @@ func main() {
 }
 
 func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota) (err error) {
+
+	for _, quota := range quotas {
+
+		quotaName := casee.ToSnakeCase(quota.Metric)
+		quotaLimitName := "estafette_gcloud_quota_" + quotaName + "_limit"
+		quotaUsageName := "estafette_gcloud_quota_" + quotaName + "_usage"
+
+		if _, ok := gauges[quotaLimitName]; !ok {
+			// create and register gauge for limit value
+			gauges[quotaLimitName] = prometheus.NewGauge(prometheus.GaugeOpts{
+				Name: quotaLimitName,
+				Help: fmt.Sprintf("The limit for quota %v.", quota.Metric),
+			})
+			prometheus.MustRegister(gauges[quotaLimitName])
+		}
+
+		// set the limit value
+		gauges[quotaLimitName].Set(quota.Limit)
+
+		if _, ok := gauges[quotaUsageName]; !ok {
+			// create and register gauge for usage value
+			gauges[quotaUsageName] = prometheus.NewGauge(prometheus.GaugeOpts{
+				Name: quotaUsageName,
+				Help: fmt.Sprintf("The usage for quota %v.", quota.Metric),
+			})
+			prometheus.MustRegister(gauges[quotaUsageName])
+		}
+
+		// set the limit value
+		gauges[quotaUsageName].Set(quota.Usage)
+
+	}
 
 	log.Info().Interface("quotas", quotas).Msg("Quotas")
 

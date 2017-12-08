@@ -59,6 +59,12 @@
 			"revisionTime": "2017-10-02T20:02:53Z"
 		},
 		{
+			"checksumSHA1": "kR64D1QzAOSM9LHOnTPdbigC8q0=",
+			"path": "github.com/fatih/camelcase",
+			"revision": "44e46d280b43ec1531bb25252440e34f1b800b65",
+			"revisionTime": "2017-10-27T10:42:57Z"
+		},
+		{
 			"checksumSHA1": "yqF125xVSkmfLpIVGrLlfE05IUk=",
 			"path": "github.com/golang/protobuf/proto",
 			"revision": "1e59b77b52bf8e4b449a57e6f79f21226d571845",
@@ -69,6 +75,12 @@
 			"path": "github.com/matttproud/golang_protobuf_extensions/pbutil",
 			"revision": "c12348ce28de40eed0136aa2b644d0ee0650e56c",
 			"revisionTime": "2016-04-24T11:30:07Z"
+		},
+		{
+			"checksumSHA1": "c7sRgSe12CKtiCJ/ZW8Ufw8aFwM=",
+			"path": "github.com/pinzolo/casee",
+			"revision": "956b6baf666aeb716a38e78d8e69823676048099",
+			"revisionTime": "2016-07-29T10:43:18Z"
 		},
 		{
 			"checksumSHA1": "LuFv4/jlrmFNnDb/5SCSEPAM9vU=",
