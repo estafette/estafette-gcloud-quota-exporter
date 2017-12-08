@@ -63,8 +63,6 @@ var (
 
 	// map with prometheus metrics
 	gauges = make(map[string]*prometheus.GaugeVec)
-
-	reg = prometheus.NewRegistry()
 )
 
 func main() {
@@ -181,33 +179,55 @@ func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota, project, region
 
 	for _, quota := range quotas {
 
+		prefix := "estafette_gcloud_quota_"
+		labels := []string{"project", "region"}
+		if region == "" {
+			prefix += "global_"
+			labels = []string{"project"}
+		}
+
 		quotaName := casee.ToSnakeCase(quota.Metric)
-		quotaLimitName := "estafette_gcloud_quota_" + quotaName + "_limit"
-		quotaUsageName := "estafette_gcloud_quota_" + quotaName + "_usage"
+		quotaLimitName := prefix + quotaName + "_limit"
+		quotaUsageName := prefix + quotaName + "_usage"
+
+		log.Debug().
+			Str("quotaLimitName", quotaLimitName).
+			Interface("quotaLimitValue", quota.Limit).
+			Str("quotaUsageName", quotaUsageName).
+			Interface("quotaUsageValue", quota.Usage).
+			Msgf("Values for quota %v", quota.Metric)
 
 		if _, ok := gauges[quotaLimitName]; !ok {
 			// create and register gauge for limit value
 			gauges[quotaLimitName] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Name: quotaLimitName,
 				Help: fmt.Sprintf("The limit for quota %v.", quota.Metric),
-			}, []string{"project", "region"})
-			reg.MustRegister(gauges[quotaLimitName])
+			}, labels)
+			prometheus.MustRegister(gauges[quotaLimitName])
 		}
 
 		// set the limit value
-		gauges[quotaLimitName].WithLabelValues(project, region).Add(quota.Limit)
+		if region == "" {
+			gauges[quotaLimitName].WithLabelValues(project).Add(quota.Limit)
+		} else {
+			gauges[quotaLimitName].WithLabelValues(project, region).Add(quota.Limit)
+		}
 
 		if _, ok := gauges[quotaUsageName]; !ok {
 			// create and register gauge for usage value
 			gauges[quotaUsageName] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Name: quotaUsageName,
 				Help: fmt.Sprintf("The usage for quota %v.", quota.Metric),
-			}, []string{"project", "region"})
-			reg.MustRegister(gauges[quotaUsageName])
+			}, labels)
+			prometheus.MustRegister(gauges[quotaUsageName])
 		}
 
 		// set the limit value
-		gauges[quotaUsageName].WithLabelValues(project, region).Add(quota.Limit)
+		if region == "" {
+			gauges[quotaUsageName].WithLabelValues(project).Add(quota.Limit)
+		} else {
+			gauges[quotaUsageName].WithLabelValues(project, region).Add(quota.Limit)
+		}
 	}
 
 	log.Info().Interface("quotas", quotas).Msgf("Quotas for project %v and region %v", project, region)
