@@ -190,13 +190,6 @@ func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota, project, region
 		quotaLimitName := prefix + quotaName + "_limit"
 		quotaUsageName := prefix + quotaName + "_usage"
 
-		// log.Debug().
-		// 	Str("quotaLimitName", quotaLimitName).
-		// 	Interface("quotaLimitValue", quota.Limit).
-		// 	Str("quotaUsageName", quotaUsageName).
-		// 	Interface("quotaUsageValue", quota.Usage).
-		// 	Msgf("Values for quota %v", quota.Metric)
-
 		if _, ok := gauges[quotaLimitName]; !ok {
 			// create and register gauge for limit value
 			gauges[quotaLimitName] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -222,11 +215,11 @@ func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota, project, region
 			prometheus.MustRegister(gauges[quotaUsageName])
 		}
 
-		// set the limit value
+		// set the usage value
 		if region == "" {
-			gauges[quotaUsageName].WithLabelValues(project).Add(quota.Limit)
+			gauges[quotaUsageName].WithLabelValues(project).Add(quota.Usage)
 		} else {
-			gauges[quotaUsageName].WithLabelValues(project, region).Add(quota.Limit)
+			gauges[quotaUsageName].WithLabelValues(project, region).Add(quota.Usage)
 		}
 	}
 
