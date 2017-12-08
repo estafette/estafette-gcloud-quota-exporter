@@ -53,7 +53,7 @@ var (
 
 var (
 	// flags
-	prometheusMetricsAddress = kingpin.Flag("metrics-listen-address", "The address to listen on for Prometheus metrics requests.").Envar("PROMETHEUS_METRICS_PORT").Default(":9001").String()
+	prometheusMetricsAddress = kingpin.Flag("metrics-listen-address", "The address to listen on for Prometheus metrics requests.").Envar("PROMETHEUS_METRICS_PORT").Default(":9101").String()
 	prometheusMetricsPath    = kingpin.Flag("metrics-path", "The path to listen for Prometheus metrics requests.").Envar("PROMETHEUS_METRICS_PATH").Default("/metrics").String()
 	googleComputeProject     = kingpin.Flag("google-compute-project", "The Google Cloud project ids to get quota for (optionally as comma-separated list).").Envar("GCLOUD_PROJECT_NAME").String()
 	googleComputeRegions     = kingpin.Flag("google-compute-regions", "The Google Cloud regions to get quota for (optionally as comma-separated list).").Envar("GCLOUD_REGIONS").String()

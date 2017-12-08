@@ -55,9 +55,9 @@ spec:
           limits:
             cpu: ${CPU_LIMIT}
             memory: ${MEMORY_LIMIT}
-        # livenessProbe:
-        #   httpGet:
-        #     path: /metrics
-        #     port: 9101
-        #   initialDelaySeconds: 30
-        #   timeoutSeconds: 1
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 9101
+          initialDelaySeconds: 30
+          timeoutSeconds: 1
