@@ -161,6 +161,9 @@ func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota) (err error) {
 			gauges[quotaLimitName] = prometheus.NewGauge(prometheus.GaugeOpts{
 				Name: quotaLimitName,
 				Help: fmt.Sprintf("The limit for quota %v.", quota.Metric),
+				ConstLabels: map[string]string{
+					"project": *googleComputeProject,
+				},
 			})
 			prometheus.MustRegister(gauges[quotaLimitName])
 		}
@@ -173,6 +176,9 @@ func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota) (err error) {
 			gauges[quotaUsageName] = prometheus.NewGauge(prometheus.GaugeOpts{
 				Name: quotaUsageName,
 				Help: fmt.Sprintf("The usage for quota %v.", quota.Metric),
+				ConstLabels: map[string]string{
+					"project": *googleComputeProject,
+				},
 			})
 			prometheus.MustRegister(gauges[quotaUsageName])
 		}
