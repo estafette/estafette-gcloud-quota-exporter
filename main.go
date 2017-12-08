@@ -63,6 +63,8 @@ var (
 
 	// map with prometheus metrics
 	gauges = make(map[string]*prometheus.GaugeVec)
+
+	reg = prometheus.NewRegistry()
 )
 
 func main() {
@@ -152,8 +154,8 @@ func main() {
 				}
 			}
 
-			// sleep random time between 22 and 37 seconds
-			sleepTime := applyJitter(300)
+			// sleep random time between 60s +- 25%
+			sleepTime := applyJitter(60)
 			log.Info().Msgf("Sleeping for %v seconds...", sleepTime)
 			time.Sleep(time.Duration(sleepTime) * time.Second)
 		}
@@ -182,7 +184,7 @@ func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota, project, region
 				Name: quotaLimitName,
 				Help: fmt.Sprintf("The limit for quota %v.", quota.Metric),
 			}, []string{"project", "region"})
-			prometheus.MustRegister(gauges[quotaLimitName])
+			reg.MustRegister(gauges[quotaLimitName])
 		}
 
 		// set the limit value
@@ -194,7 +196,7 @@ func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota, project, region
 				Name: quotaUsageName,
 				Help: fmt.Sprintf("The usage for quota %v.", quota.Metric),
 			}, []string{"project", "region"})
-			prometheus.MustRegister(gauges[quotaUsageName])
+			reg.MustRegister(gauges[quotaUsageName])
 		}
 
 		// set the limit value
