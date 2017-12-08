@@ -94,19 +94,6 @@ func main() {
 		Str("goVersion", goVersion).
 		Msg("Starting estafette-gcloud-quota-exporter...")
 
-	// start prometheus
-	go func() {
-		log.Debug().
-			Str("port", *prometheusMetricsAddress).
-			Msg("Serving Prometheus metrics...")
-
-		http.Handle(*prometheusMetricsPath, promhttp.Handler())
-
-		if err := http.ListenAndServe(*prometheusMetricsAddress, nil); err != nil {
-			log.Fatal().Err(err).Msg("Starting Prometheus listener failed")
-		}
-	}()
-
 	// define channel and wait group to gracefully shutdown the application
 	gracefulShutdown := make(chan os.Signal)
 	signal.Notify(gracefulShutdown, syscall.SIGTERM, syscall.SIGINT)
@@ -129,35 +116,32 @@ func main() {
 	// split regions to list
 	regions := strings.Split(*googleComputeRegions, ",")
 
+	// fetch once, before setting up prometheus handler
+	fetchQuota(ctx, computeService, projects, regions)
+
+	// start prometheus
+	go func() {
+		log.Debug().
+			Str("port", *prometheusMetricsAddress).
+			Msg("Serving Prometheus metrics...")
+
+		http.Handle(*prometheusMetricsPath, promhttp.Handler())
+
+		if err := http.ListenAndServe(*prometheusMetricsAddress, nil); err != nil {
+			log.Fatal().Err(err).Msg("Starting Prometheus listener failed")
+		}
+	}()
+
 	// watch gcloud quota
 	go func(waitGroup *sync.WaitGroup) {
 		// loop indefinitely
 		for {
-			log.Info().Msg("Fetching gcloud quota...")
-
-			for _, project := range projects {
-
-				p, err := computeService.Projects.Get(project).Context(ctx).Do()
-				if err != nil {
-					log.Fatal().Err(err).Msgf("Retrieving project detail for project %v failed", project)
-				}
-
-				updatePrometheusTimelinesFromQuota(p.Quotas, project, "")
-
-				for _, region := range regions {
-					r, err := computeService.Regions.Get(project, region).Context(ctx).Do()
-					if err != nil {
-						log.Fatal().Err(err).Msgf("Retrieving region detail for project %v and region %v failed", project, region)
-					}
-
-					updatePrometheusTimelinesFromQuota(r.Quotas, project, region)
-				}
-			}
-
 			// sleep random time between 60s +- 25%
 			sleepTime := applyJitter(60)
 			log.Info().Msgf("Sleeping for %v seconds...", sleepTime)
 			time.Sleep(time.Duration(sleepTime) * time.Second)
+
+			fetchQuota(ctx, computeService, projects, regions)
 		}
 	}(waitGroup)
 
@@ -168,6 +152,29 @@ func main() {
 	waitGroup.Wait()
 
 	log.Info().Msg("Shutting down...")
+}
+
+func fetchQuota(ctx context.Context, computeService *compute.Service, projects, regions []string) {
+	log.Info().Msg("Fetching gcloud quota...")
+
+	for _, project := range projects {
+
+		p, err := computeService.Projects.Get(project).Context(ctx).Do()
+		if err != nil {
+			log.Fatal().Err(err).Msgf("Retrieving project detail for project %v failed", project)
+		}
+
+		updatePrometheusTimelinesFromQuota(p.Quotas, project, "")
+
+		for _, region := range regions {
+			r, err := computeService.Regions.Get(project, region).Context(ctx).Do()
+			if err != nil {
+				log.Fatal().Err(err).Msgf("Retrieving region detail for project %v and region %v failed", project, region)
+			}
+
+			updatePrometheusTimelinesFromQuota(r.Quotas, project, region)
+		}
+	}
 }
 
 func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota, project, region string) (err error) {
