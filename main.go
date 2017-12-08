@@ -190,12 +190,12 @@ func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota, project, region
 		quotaLimitName := prefix + quotaName + "_limit"
 		quotaUsageName := prefix + quotaName + "_usage"
 
-		log.Debug().
-			Str("quotaLimitName", quotaLimitName).
-			Interface("quotaLimitValue", quota.Limit).
-			Str("quotaUsageName", quotaUsageName).
-			Interface("quotaUsageValue", quota.Usage).
-			Msgf("Values for quota %v", quota.Metric)
+		// log.Debug().
+		// 	Str("quotaLimitName", quotaLimitName).
+		// 	Interface("quotaLimitValue", quota.Limit).
+		// 	Str("quotaUsageName", quotaUsageName).
+		// 	Interface("quotaUsageValue", quota.Usage).
+		// 	Msgf("Values for quota %v", quota.Metric)
 
 		if _, ok := gauges[quotaLimitName]; !ok {
 			// create and register gauge for limit value
