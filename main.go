@@ -52,7 +52,7 @@ var (
 	// flags
 	prometheusMetricsAddress = kingpin.Flag("metrics-listen-address", "The address to listen on for Prometheus metrics requests.").Envar("PROMETHEUS_METRICS_PORT").Default(":9001").String()
 	prometheusMetricsPath    = kingpin.Flag("metrics-path", "The path to listen for Prometheus metrics requests.").Envar("PROMETHEUS_METRICS_PATH").Default("/metrics").String()
-	googleComputeProject     = kingpin.Flag("google-compute-project", "The Google Cloud project name to get quota for.").Envar("GOOGLE_COMPUTE_PROJECT").String()
+	googleComputeProject     = kingpin.Flag("google-compute-project", "The Google Cloud project name to get quota for.").Envar("GCLOUD_PROJECT_NAME").String()
 
 	// seed random number
 	r = rand.New(rand.NewSource(time.Now().UnixNano()))
