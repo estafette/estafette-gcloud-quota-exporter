@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -54,13 +55,14 @@ var (
 	// flags
 	prometheusMetricsAddress = kingpin.Flag("metrics-listen-address", "The address to listen on for Prometheus metrics requests.").Envar("PROMETHEUS_METRICS_PORT").Default(":9001").String()
 	prometheusMetricsPath    = kingpin.Flag("metrics-path", "The path to listen for Prometheus metrics requests.").Envar("PROMETHEUS_METRICS_PATH").Default("/metrics").String()
-	googleComputeProject     = kingpin.Flag("google-compute-project", "The Google Cloud project name to get quota for.").Envar("GCLOUD_PROJECT_NAME").String()
+	googleComputeProject     = kingpin.Flag("google-compute-project", "The Google Cloud project ids to get quota for (optionally as comma-separated list).").Envar("GCLOUD_PROJECT_NAME").String()
+	googleComputeRegions     = kingpin.Flag("google-compute-regions", "The Google Cloud regions to get quota for (optionally as comma-separated list).").Envar("GCLOUD_REGIONS").String()
 
 	// seed random number
 	r = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// map with prometheus metrics
-	gauges = make(map[string]prometheus.Gauge)
+	gauges = make(map[string]*prometheus.GaugeVec)
 )
 
 func main() {
@@ -119,18 +121,36 @@ func main() {
 		log.Fatal().Err(err).Msg("Creating google cloud service failed")
 	}
 
+	// split projects to list
+	projects := strings.Split(*googleComputeProject, ",")
+
+	// split regions to list
+	regions := strings.Split(*googleComputeRegions, ",")
+
 	// watch gcloud quota
 	go func(waitGroup *sync.WaitGroup) {
 		// loop indefinitely
 		for {
 			log.Info().Msg("Fetching gcloud quota...")
 
-			project, err := computeService.Projects.Get(*googleComputeProject).Context(ctx).Do()
-			if err != nil {
-				log.Fatal().Err(err).Msg("Creating gcloud service failed")
-			}
+			for _, project := range projects {
 
-			updatePrometheusTimelinesFromQuota(project.Quotas)
+				p, err := computeService.Projects.Get(project).Context(ctx).Do()
+				if err != nil {
+					log.Fatal().Err(err).Msgf("Retrieving project detail for project %v failed", project)
+				}
+
+				updatePrometheusTimelinesFromQuota(p.Quotas, project, "")
+
+				for _, region := range regions {
+					r, err := computeService.Regions.Get(project, region).Context(ctx).Do()
+					if err != nil {
+						log.Fatal().Err(err).Msgf("Retrieving region detail for project %v and region %v failed", project, region)
+					}
+
+					updatePrometheusTimelinesFromQuota(r.Quotas, project, region)
+				}
+			}
 
 			// sleep random time between 22 and 37 seconds
 			sleepTime := applyJitter(300)
@@ -148,7 +168,7 @@ func main() {
 	log.Info().Msg("Shutting down...")
 }
 
-func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota) (err error) {
+func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota, project, region string) (err error) {
 
 	for _, quota := range quotas {
 
@@ -158,37 +178,30 @@ func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota) (err error) {
 
 		if _, ok := gauges[quotaLimitName]; !ok {
 			// create and register gauge for limit value
-			gauges[quotaLimitName] = prometheus.NewGauge(prometheus.GaugeOpts{
+			gauges[quotaLimitName] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Name: quotaLimitName,
 				Help: fmt.Sprintf("The limit for quota %v.", quota.Metric),
-				ConstLabels: map[string]string{
-					"project": *googleComputeProject,
-				},
-			})
+			}, []string{"project", "region"})
 			prometheus.MustRegister(gauges[quotaLimitName])
 		}
 
 		// set the limit value
-		gauges[quotaLimitName].Set(quota.Limit)
+		gauges[quotaLimitName].WithLabelValues(project, region).Add(quota.Limit)
 
 		if _, ok := gauges[quotaUsageName]; !ok {
 			// create and register gauge for usage value
-			gauges[quotaUsageName] = prometheus.NewGauge(prometheus.GaugeOpts{
+			gauges[quotaUsageName] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Name: quotaUsageName,
 				Help: fmt.Sprintf("The usage for quota %v.", quota.Metric),
-				ConstLabels: map[string]string{
-					"project": *googleComputeProject,
-				},
-			})
+			}, []string{"project", "region"})
 			prometheus.MustRegister(gauges[quotaUsageName])
 		}
 
 		// set the limit value
-		gauges[quotaUsageName].Set(quota.Usage)
-
+		gauges[quotaUsageName].WithLabelValues(project, region).Add(quota.Limit)
 	}
 
-	log.Info().Interface("quotas", quotas).Msg("Quotas")
+	log.Info().Interface("quotas", quotas).Msgf("Quotas for project %v and region %v", project, region)
 
 	return
 }
