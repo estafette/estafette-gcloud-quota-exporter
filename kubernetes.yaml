@@ -44,6 +44,9 @@ spec:
       - name: ${APP_NAME}
         image: estafette/estafette-gcloud-quota-exporter:${GO_PIPELINE_LABEL}
         imagePullPolicy: Always
+        env:
+        - name: "GOOGLE_COMPUTE_PROJECT"
+          value: "${GOOGLE_COMPUTE_PROJECT}"
         resources:
           requests:
             cpu: ${CPU_REQUEST}

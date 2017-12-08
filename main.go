@@ -1,7 +1,7 @@
 package main
 
 import (
-	"flag"
+	"context"
 	stdlog "log"
 	"math/rand"
 	"net/http"
@@ -12,8 +12,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alecthomas/kingpin"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/oauth2/google"
+	compute "google.golang.org/api/compute/v1"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -46,7 +49,10 @@ var (
 )
 
 var (
-	addr = flag.String("listen-address", ":9101", "The address to listen on for HTTP requests.")
+	// flags
+	prometheusMetricsAddress = kingpin.Flag("metrics-listen-address", "The address to listen on for Prometheus metrics requests.").Envar("PROMETHEUS_METRICS_PORT").Default(":9001").String()
+	prometheusMetricsPath    = kingpin.Flag("metrics-path", "The path to listen for Prometheus metrics requests.").Envar("PROMETHEUS_METRICS_PATH").Default("/metrics").String()
+	googleComputeProject     = kingpin.Flag("google-compute-project", "The Google Cloud project name to get quota for.").Envar("GOOGLE_COMPUTE_PROJECT").String()
 
 	// seed random number
 	r = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -69,7 +75,7 @@ func init() {
 func main() {
 
 	// parse command line parameters
-	flag.Parse()
+	kingpin.Parse()
 
 	// log as severity for stackdriver logging to recognize the level
 	zerolog.LevelFieldName = "severity"
@@ -96,12 +102,12 @@ func main() {
 	// start prometheus
 	go func() {
 		log.Debug().
-			Str("port", *addr).
+			Str("port", *prometheusMetricsAddress).
 			Msg("Serving Prometheus metrics...")
 
-		http.Handle("/metrics", promhttp.Handler())
+		http.Handle(*prometheusMetricsPath, promhttp.Handler())
 
-		if err := http.ListenAndServe(*addr, nil); err != nil {
+		if err := http.ListenAndServe(*prometheusMetricsAddress, nil); err != nil {
 			log.Fatal().Err(err).Msg("Starting Prometheus listener failed")
 		}
 	}()
@@ -117,6 +123,27 @@ func main() {
 		for {
 			log.Info().Msg("Fetching gcloud quota...")
 
+			ctx := context.Background()
+			client, err := google.DefaultClient(ctx, compute.CloudPlatformScope)
+			if err != nil {
+				log.Fatal().Err(err).Msg("Creating google cloud client failed")
+			}
+
+			computeService, err := compute.New(client)
+			if err != nil {
+				log.Fatal().Err(err).Msg("Creating google cloud service failed")
+			}
+
+			// Project ID for this request.
+			//project := "my-project" // TODO: Update placeholder value.
+
+			project, err := computeService.Projects.Get(*googleComputeProject).Context(ctx).Do()
+			if err != nil {
+				log.Fatal().Err(err).Msg("Creating gcloud service failed")
+			}
+
+			updatePrometheusTimelinesFromQuota(project.Quotas)
+
 			// sleep random time between 22 and 37 seconds
 			sleepTime := applyJitter(30)
 			log.Info().Msgf("Sleeping for %v seconds...", sleepTime)
@@ -131,6 +158,12 @@ func main() {
 	waitGroup.Wait()
 
 	log.Info().Msg("Shutting down...")
+}
+
+func updatePrometheusTimelinesFromQuota(quotas []*Quotas) (err error) {
+
+	log.Info().Interface("quotas", quotas).Msg("Quotas")
+
 }
 
 func applyJitter(input int) (output int) {
