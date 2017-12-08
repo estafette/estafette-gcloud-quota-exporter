@@ -108,22 +108,22 @@ func main() {
 	signal.Notify(gracefulShutdown, syscall.SIGTERM, syscall.SIGINT)
 	waitGroup := &sync.WaitGroup{}
 
+	ctx := context.Background()
+	client, err := google.DefaultClient(ctx, compute.CloudPlatformScope)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Creating google cloud client failed")
+	}
+
+	computeService, err := compute.New(client)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Creating google cloud service failed")
+	}
+
 	// watch gcloud quota
 	go func(waitGroup *sync.WaitGroup) {
 		// loop indefinitely
 		for {
 			log.Info().Msg("Fetching gcloud quota...")
-
-			ctx := context.Background()
-			client, err := google.DefaultClient(ctx, compute.CloudPlatformScope)
-			if err != nil {
-				log.Fatal().Err(err).Msg("Creating google cloud client failed")
-			}
-
-			computeService, err := compute.New(client)
-			if err != nil {
-				log.Fatal().Err(err).Msg("Creating google cloud service failed")
-			}
 
 			project, err := computeService.Projects.Get(*googleComputeProject).Context(ctx).Do()
 			if err != nil {
