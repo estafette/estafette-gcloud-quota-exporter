@@ -201,9 +201,9 @@ func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota, project, region
 
 		// set the limit value
 		if region == "" {
-			gauges[quotaLimitName].WithLabelValues(project).Add(quota.Limit)
+			gauges[quotaLimitName].WithLabelValues(project).Set(quota.Limit)
 		} else {
-			gauges[quotaLimitName].WithLabelValues(project, region).Add(quota.Limit)
+			gauges[quotaLimitName].WithLabelValues(project, region).Set(quota.Limit)
 		}
 
 		if _, ok := gauges[quotaUsageName]; !ok {
@@ -217,9 +217,9 @@ func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota, project, region
 
 		// set the usage value
 		if region == "" {
-			gauges[quotaUsageName].WithLabelValues(project).Add(quota.Usage)
+			gauges[quotaUsageName].WithLabelValues(project).Set(quota.Usage)
 		} else {
-			gauges[quotaUsageName].WithLabelValues(project, region).Add(quota.Usage)
+			gauges[quotaUsageName].WithLabelValues(project, region).Set(quota.Usage)
 		}
 	}
 
