@@ -3,6 +3,14 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "ziGYNAykQBNmv9RuWLO8stBx92k=",
+			"path": "github.com/GoogleCloudPlatform/google-cloud-go",
+			"revision": "2d3a6656c17a60b0815b7e06ab0be04eacb6e613",
+			"revisionTime": "2017-10-30T12:51:11Z",
+			"version": "v0.16.0",
+			"versionExact": "v0.16.0"
+		},
+		{
 			"checksumSHA1": "spyv5/YFBjYyZLZa1U2LBfDR8PM=",
 			"path": "github.com/beorn7/perks/quantile",
 			"revision": "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9",
@@ -97,12 +105,12 @@
 			"revisionTime": "2017-12-01T17:52:37Z"
 		},
 		{
-			"checksumSHA1": "FG7zw1b6t0e8ZaCI8oVr3jeoR2M=",
+			"checksumSHA1": "VFgakVFNczJTf9gtUeIpkgcFRf0=",
 			"path": "github.com/rs/zerolog/log",
-			"revision": "2ed2f2c974489526d10329dae76d0f175684109a",
-			"revisionTime": "2017-08-06T03:45:41Z",
-			"version": "v1.2.2",
-			"versionExact": "v1.2.2"
+			"revision": "3ac71fc58dbd43122668a912b755b0979ba9ce1f",
+			"revisionTime": "2017-09-03T18:01:28Z",
+			"version": "v1.3.0",
+			"versionExact": "v1.3.0"
 		},
 		{
 			"checksumSHA1": "K0crHygPTP42i1nLKWphSlvOQJw=",
