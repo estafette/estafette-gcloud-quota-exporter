@@ -160,10 +160,11 @@ func main() {
 	log.Info().Msg("Shutting down...")
 }
 
-func updatePrometheusTimelinesFromQuota(quotas []*Quotas) (err error) {
+func updatePrometheusTimelinesFromQuota(quotas []*compute.Quota) (err error) {
 
 	log.Info().Interface("quotas", quotas).Msg("Quotas")
 
+	return
 }
 
 func applyJitter(input int) (output int) {
