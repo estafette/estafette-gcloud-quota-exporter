@@ -29,7 +29,6 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9101"
     spec:
-      serviceAccount: ${APP_NAME}
       affinity:
         nodeAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
