@@ -44,8 +44,8 @@ spec:
         image: estafette/estafette-gcloud-quota-exporter:${GO_PIPELINE_LABEL}
         imagePullPolicy: Always
         env:
-        - name: "GCLOUD_PROJECT_NAME"
-          value: "${GCLOUD_PROJECT_NAME}"
+        - name: "GCLOUD_PROJECTS"
+          value: "${GCLOUD_PROJECTS}"
         - name: "GCLOUD_REGIONS"
           value: "${GCLOUD_REGIONS}"
         resources:

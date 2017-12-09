@@ -54,7 +54,7 @@ var (
 	// flags
 	prometheusMetricsAddress = kingpin.Flag("metrics-listen-address", "The address to listen on for Prometheus metrics requests.").Envar("PROMETHEUS_METRICS_PORT").Default(":9101").String()
 	prometheusMetricsPath    = kingpin.Flag("metrics-path", "The path to listen for Prometheus metrics requests.").Envar("PROMETHEUS_METRICS_PATH").Default("/metrics").String()
-	googleComputeProject     = kingpin.Flag("google-compute-project", "The Google Cloud project ids to get quota for (optionally as comma-separated list).").Envar("GCLOUD_PROJECT_NAME").String()
+	googleComputeProjects    = kingpin.Flag("google-compute-projects", "The Google Cloud project ids to get quota for (optionally as comma-separated list).").Envar("GCLOUD_PROJECTS").String()
 	googleComputeRegions     = kingpin.Flag("google-compute-regions", "The Google Cloud regions to get quota for (optionally as comma-separated list).").Envar("GCLOUD_REGIONS").String()
 
 	// seed random number
@@ -124,26 +124,6 @@ func main() {
 	signal.Notify(gracefulShutdown, syscall.SIGTERM, syscall.SIGINT)
 	waitGroup := &sync.WaitGroup{}
 
-	ctx := context.Background()
-	client, err := google.DefaultClient(ctx, compute.CloudPlatformScope)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Creating google cloud client failed")
-	}
-
-	computeService, err := compute.New(client)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Creating google cloud service failed")
-	}
-
-	// split projects to list
-	projects := strings.Split(*googleComputeProject, ",")
-
-	// split regions to list
-	regions := strings.Split(*googleComputeRegions, ",")
-
-	// fetch once, before setting up prometheus handler
-	fetchQuota(ctx, computeService, projects, regions)
-
 	// start prometheus
 	go func() {
 		log.Debug().
@@ -157,16 +137,33 @@ func main() {
 		}
 	}()
 
+	ctx := context.Background()
+	client, err := google.DefaultClient(ctx, compute.CloudPlatformScope)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Creating google cloud client failed")
+	}
+
+	computeService, err := compute.New(client)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Creating google cloud service failed")
+	}
+
+	// split projects to list
+	projects := strings.Split(*googleComputeProjects, ",")
+
+	// split regions to list
+	regions := strings.Split(*googleComputeRegions, ",")
+
 	// watch gcloud quota
 	go func(waitGroup *sync.WaitGroup) {
 		// loop indefinitely
 		for {
+			fetchQuota(ctx, computeService, projects, regions)
+
 			// sleep random time between 60s +- 25%
 			sleepTime := applyJitter(60)
 			log.Info().Msgf("Sleeping for %v seconds...", sleepTime)
 			time.Sleep(time.Duration(sleepTime) * time.Second)
-
-			fetchQuota(ctx, computeService, projects, regions)
 		}
 	}(waitGroup)
 
