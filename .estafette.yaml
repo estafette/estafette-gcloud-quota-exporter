@@ -3,6 +3,7 @@ builder:
 
 labels:
   app: estafette-gcloud-quota-exporter
+  app-group: estafette-various
   team: estafette-team
   language: golang
 
