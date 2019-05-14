@@ -48,6 +48,8 @@ spec:
           value: "${GCLOUD_PROJECTS}"
         - name: "GCLOUD_REGIONS"
           value: "${GCLOUD_REGIONS}"
+        - name: "GOOGLE_APPLICATION_CREDENTIALS"
+          value: "/gcp-service-account/service-account-key.json"
         resources:
           requests:
             cpu: ${CPU_REQUEST}
@@ -61,3 +63,27 @@ spec:
             port: 9101
           initialDelaySeconds: 30
           timeoutSeconds: 1
+        volumeMounts:
+        - name: gcp-service-account
+          mountPath: /gcp-service-account
+        ports:
+        - name: http-9090
+          containerPort: 9090
+      volumes:
+      - name: gcp-service-account
+        secret:
+          secretName: ${APP_NAME}-gcp-service-account
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${APP_NAME}-gcp-service-account
+  namespace: ${NAMESPACE}
+  labels:
+    app: ${APP_NAME}
+    team: ${TEAM_NAME}
+    type: gcp-service-account
+  annotations:
+    estafette.io/gcp-service-account: 'true'
+    estafette.io/gcp-service-account-name: '${APP_NAME}'
+type: Opaque

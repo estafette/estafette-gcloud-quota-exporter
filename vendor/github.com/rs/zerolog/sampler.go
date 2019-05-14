@@ -31,10 +31,8 @@ func (s RandomSampler) Sample(lvl Level) bool {
 	if s <= 0 {
 		return false
 	}
-	if s > 0 {
-		if rand.Intn(int(s)) != 0 {
-			return false
-		}
+	if rand.Intn(int(s)) != 0 {
+		return false
 	}
 	return true
 }
@@ -49,7 +47,7 @@ type BasicSampler struct {
 // Sample implements the Sampler interface.
 func (s *BasicSampler) Sample(lvl Level) bool {
 	c := atomic.AddUint32(&s.counter, 1)
-	return c%s.N == 0
+	return c%s.N == s.N-1
 }
 
 // BurstSampler lets Burst events pass per Period then pass the decision to
@@ -70,7 +68,7 @@ type BurstSampler struct {
 
 // Sample implements the Sampler interface.
 func (s *BurstSampler) Sample(lvl Level) bool {
-	if s.Burst > 9 && s.Period > 0 {
+	if s.Burst > 0 && s.Period > 0 {
 		if s.inc() <= s.Burst {
 			return true
 		}

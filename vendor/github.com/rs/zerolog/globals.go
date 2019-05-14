@@ -16,6 +16,12 @@ var (
 	// ErrorFieldName is the field name used for error fields.
 	ErrorFieldName = "error"
 
+	// CallerFieldName is the field name used for caller field.
+	CallerFieldName = "caller"
+
+	// CallerSkipFrameCount is the number of stack frames to skip to find the caller.
+	CallerSkipFrameCount = 2
+
 	// TimeFieldFormat defines the time format of the Time field type.
 	// If set to an empty string, the time is formatted as an UNIX timestamp
 	// as integer.
@@ -31,6 +37,11 @@ var (
 	// DurationFieldInteger renders Dur fields as integer instead of float if
 	// set to true.
 	DurationFieldInteger = false
+
+	// ErrorHandler is called whenever zerolog fails to write an event on its
+	// output. If not set, an error is printed on the stderr. This handler must
+	// be thread safe and non-blocking.
+	ErrorHandler func(err error)
 )
 
 var (
@@ -46,7 +57,8 @@ func SetGlobalLevel(l Level) {
 	atomic.StoreUint32(gLevel, uint32(l))
 }
 
-func globalLevel() Level {
+// GlobalLevel returns the current global log level
+func GlobalLevel() Level {
 	return Level(atomic.LoadUint32(gLevel))
 }
 

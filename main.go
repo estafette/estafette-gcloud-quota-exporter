@@ -2,29 +2,24 @@ package main
 
 import (
 	"context"
-	stdlog "log"
 	"math/rand"
-	"net/http"
 	"os"
-	"os/signal"
 	"runtime"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/alecthomas/kingpin"
+	foundation "github.com/estafette/estafette-foundation"
+	"github.com/fsnotify/fsnotify"
 	"github.com/pinzolo/casee"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/oauth2/google"
 	compute "google.golang.org/api/compute/v1"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const annotationCloudflareDNS string = "estafette.io/cloudflare-dns"
 const annotationCloudflareHostnames string = "estafette.io/cloudflare-hostnames"
 const annotationCloudflareProxy string = "estafette.io/cloudflare-proxy"
 const annotationCloudflareUseOriginRecord string = "estafette.io/cloudflare-use-origin-record"
@@ -43,6 +38,7 @@ type CloudflareState struct {
 }
 
 var (
+	app       string
 	version   string
 	branch    string
 	revision  string
@@ -97,45 +93,9 @@ func main() {
 	// parse command line parameters
 	kingpin.Parse()
 
-	// log as severity for stackdriver logging to recognize the level
-	zerolog.LevelFieldName = "severity"
+	foundation.InitLogging(app, version, branch, revision, buildDate)
 
-	// set some default fields added to all logs
-	log.Logger = zerolog.New(os.Stdout).With().
-		Timestamp().
-		Str("app", "estafette-gcloud-quota-exporter").
-		Str("version", version).
-		Logger()
-
-	// use zerolog for any logs sent via standard log library
-	stdlog.SetFlags(0)
-	stdlog.SetOutput(log.Logger)
-
-	// log startup message
-	log.Info().
-		Str("branch", branch).
-		Str("revision", revision).
-		Str("buildDate", buildDate).
-		Str("goVersion", goVersion).
-		Msg("Starting estafette-gcloud-quota-exporter...")
-
-	// define channel and wait group to gracefully shutdown the application
-	gracefulShutdown := make(chan os.Signal)
-	signal.Notify(gracefulShutdown, syscall.SIGTERM, syscall.SIGINT)
-	waitGroup := &sync.WaitGroup{}
-
-	// start prometheus
-	go func() {
-		log.Debug().
-			Str("port", *prometheusMetricsAddress).
-			Msg("Serving Prometheus metrics...")
-
-		http.Handle(*prometheusMetricsPath, promhttp.Handler())
-
-		if err := http.ListenAndServe(*prometheusMetricsAddress, nil); err != nil {
-			log.Fatal().Err(err).Msg("Starting Prometheus listener failed")
-		}
-	}()
+	foundation.InitMetrics()
 
 	ctx := context.Background()
 	client, err := google.DefaultClient(ctx, compute.CloudPlatformScope)
@@ -147,6 +107,22 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Creating google cloud service failed")
 	}
+
+	foundation.WatchForFileChanges(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"), func(event fsnotify.Event) {
+		// reinitialize parts making use of the mounted data
+
+		client, err = google.DefaultClient(ctx, compute.CloudPlatformScope)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Creating google cloud client failed")
+		}
+
+		computeService, err = compute.New(client)
+		if err != nil {
+
+		}
+	})
+
+	gracefulShutdown, waitGroup := foundation.InitGracefulShutdownHandling()
 
 	// split projects to list
 	projects := strings.Split(*googleComputeProjects, ",")
@@ -167,13 +143,7 @@ func main() {
 		}
 	}(waitGroup)
 
-	signalReceived := <-gracefulShutdown
-	log.Info().
-		Msgf("Received signal %v. Waiting on running tasks to finish...", signalReceived)
-
-	waitGroup.Wait()
-
-	log.Info().Msg("Shutting down...")
+	foundation.HandleGracefulShutdown(gracefulShutdown, waitGroup)
 }
 
 func fetchQuota(ctx context.Context, computeService *compute.Service, projects, regions []string) {
