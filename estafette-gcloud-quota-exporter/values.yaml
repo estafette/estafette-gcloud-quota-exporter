@@ -2,6 +2,27 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+#
+# APPLICATION SETTINGS
+#
+
+# comma separated list of project ids to retrieve quota details for
+gcpProjects:
+
+# comma separates list of regions to retrieve quota for besides the global quota
+gcpRegions:
+
+secret:
+  # when using estafette-gcp-service account controller to fetch key files, set this to true and leave googleServiceAccountKeyfileJson empty
+  useGcpServiceAccountAnnotation: false
+
+  # sets a json keyfile for a gcp service account
+  googleServiceAccountKeyfileJson: '{"type": "service_account"}'
+
+#
+# GENERIC SETTINGS
+#
+
 replicaCount: 1
 
 image:
@@ -59,9 +80,6 @@ affinity:
           values:
           - "true"
 
-gcpProjects:
-gcpRegions:
-
 # pass (additional) arguments to the container
 extraArgs: []
 
@@ -73,10 +91,3 @@ extraLabels: {}
 
 # use to add extra labels to podspec for getting their values in prometheus
 extraPodLabels: {}
-
-secret:
-  # when using estafette-gcp-service account controller to fetch key files, set this to true and leave googleServiceAccountKeyfileJson empty
-  useGcpServiceAccountAnnotation: false
-
-  # sets a json keyfile for a gcp service account
-  googleServiceAccountKeyfileJson: '{"type": "service_account"}'
