@@ -38,6 +38,7 @@ type CloudflareState struct {
 }
 
 var (
+	appgroup  string
 	app       string
 	version   string
 	branch    string
@@ -93,7 +94,8 @@ func main() {
 	// parse command line parameters
 	kingpin.Parse()
 
-	foundation.InitLogging(app, version, branch, revision, buildDate)
+	// init log format from envvar ESTAFETTE_LOG_FORMAT
+	foundation.InitLoggingFromEnv(appgroup, app, version, branch, revision, buildDate)
 
 	foundation.InitMetrics()
 
